@@ -15,7 +15,9 @@ def load_txt(fname):
     fname: file path of the file
     return: dictionary with titles as keys and list of values as values.
     '''
-    f = open(fname).readlines()
+    fi = open(fname)
+    f = fi.readlines()
+    fi.close()
     title = f[0].strip().split("\t")
     dic = {}
     for t in title:
@@ -24,9 +26,49 @@ def load_txt(fname):
         l = line.strip().split("\t")
         for t, n in zip(title, l):
             dic[t].append(n)
+
     return dic
 
-def get_track_objects(res_dic, mask=None, pixel_size=(0.332, 0.332, 1.0)):
+def get_cell_info_raw(res_dic):
+    cell_info_raw = []
+    for label,x,y,z in zip(res_dic["TrackObjects_Label_1"],
+                    res_dic["Location_Center_X"],
+                    res_dic["Location_Center_Y"],
+                    res_dic["ImageNumber"]
+                    ):
+        try:
+            n = int(float(label))
+        except ValueError:
+            continue
+        cell_info_raw.append([int(float((label))), float(x), float(y), float(z)])
+    return cell_info_raw
+
+
+def get_colocal_arrays(reference, target_list, tol=1.0, pixel_size=(0.332, 0.332, 100)):
+    '''
+    Match target_list objects onto reference. 
+    return: a boolean numpy arra
+    '''
+
+    tol **= 2
+    pixel_size = np.array(pixel_size)[np.newaxis, :]
+    ref = np.array(get_cell_info_raw(reference))[:,1:]
+    target_list = [np.array(get_cell_info_raw(x))[:, 1:] for x in target_list]
+    print("---", [np.shape(x) for x in target_list])
+    ref *= pixel_size
+    target_list = [x * pixel_size for x in target_list]
+    res = (np.zeros((ref.shape[0], len(target_list))) != 0)
+    for i,coord in enumerate(ref):
+        for j,target in enumerate(target_list):
+            #print("target:",target.shape, "coord:", coord.shape)
+            #print(np.min(np.sum((target - coord) ** 2, axis=1)))
+            res[i,j] = (np.min(np.sum((target - coord) ** 2, axis=1)) < tol)
+
+    return res       
+    
+
+
+def get_track_objects(res_dic, mask=None, pixel_size=(0.332, 0.332, 1.0), colocal_info_array=None):
     '''
     Get relavant information (XYZ Coordinates, track labels from 
     dictionary returned by load_txt and sanitize input by 
@@ -37,21 +79,15 @@ def get_track_objects(res_dic, mask=None, pixel_size=(0.332, 0.332, 1.0)):
     return: a numpy array of shape (cell number, 3) where each row 
             is the XYZ coordinate of a cell.
     '''
-    cell_info_raw = zip(res_dic["TrackObjects_Label_1"],
-                    res_dic["Location_Center_X"],
-                    res_dic["Location_Center_Y"],
-                    res_dic["ImageNumber"]
-                    )
+    cell_info_raw = get_cell_info_raw(res_dic)
     max_n = 0
 
     cell_info = {}
-    for cell in cell_info_raw:
+    colocal_info = {}
+    for i, cell in enumerate(cell_info_raw):
 
 
-        try:
-            n = int(float(cell[0]))
-        except ValueError:
-            continue
+        n = cell[0]
 
         if mask:
             if mask[cell_info[0], cell_info[1]] == 0:
@@ -59,16 +95,23 @@ def get_track_objects(res_dic, mask=None, pixel_size=(0.332, 0.332, 1.0)):
 
         if not n in cell_info:
             cell_info[n] = [[],[],[]]
+            if colocal_info_array is not None:
+                colocal_info[n] = (np.zeros(colocal_info_array.shape[1])!=0)
         
         cell_info[n][0].append(float(cell[1])*pixel_size[0])#X
         cell_info[n][1].append(float(cell[2])*pixel_size[1])#Y
         cell_info[n][2].append(float(cell[3])*pixel_size[2])#Z
+        if colocal_info_array is not None:
+            colocal_info[n] |= colocal_info_array[i] 
     
-    cell_info_avg = {}
+    cell_info_avg = []
+    colocal_info_list = []
     for cell,v in cell_info.items():
-        cell_info_avg[cell] = [sum(x) / len(x) for x in v]
+        cell_info_avg.append([sum(x) / len(x) for x in v])
+        if colocal_info_array is not None:
+            colocal_info_list.append(colocal_info[cell])
 
-    return np.array(list(cell_info_avg.values()))
+    return np.array(cell_info_avg), np.array(colocal_info_list) 
 
 def get_distance_distro(tracked_objects, sample_size=None, repeat=1):
     '''
@@ -92,6 +135,7 @@ def get_distance_distro(tracked_objects, sample_size=None, repeat=1):
     dist = np.hstack(dist)
 
     return dist
+
 
 
 def get_args():
@@ -149,8 +193,9 @@ if __name__ == "__main__":
         target_info = load_txt(target)
         reference_info = load_txt(reference)
         
-        target_objects = get_track_objects(target_info, mask = args.mask)
-        reference_objects = get_track_objects(reference_info, mask = args.mask)
+        target_objects,_ = get_track_objects(target_info, mask = args.mask)
+        reference_objects,_ = get_track_objects(reference_info, mask = args.mask)
+
 
         print("Loaded {} cells from target file: {}.".format(target_objects.shape[0], target))
         print("Loaded {} cells from reference file: {}.".format(reference_objects.shape[0], reference))
