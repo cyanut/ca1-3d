@@ -6,8 +6,6 @@ from sklearn.decomposition import PCA, FastICA
 import argparse
 
 
-cell_diameter = 13 #um 
-cell_radius = cell_diameter / 2
 
 def select_ca1(res, n=20, threshold=60):
     is_ca1 = []
@@ -34,6 +32,10 @@ def get_args():
             nargs = 2)
     parser.add_argument("-r", "--reference",
             help = "The reference cell groups to be sampled from")
+    parser.add_argument("-d", "--cell-diameter",
+            help = "The diameter of rendered cell, in um",
+            type = float,
+            default = 13)
     return parser.parse_args()
 
 
@@ -72,7 +74,7 @@ if __name__ == "__main__":
     plot_data.append(res[~is_ca1])
 
     for plot, color, label in zip(plot_data, cell_colors, cell_labels):
-        ax.scatter(plot[:,0], plot[:,1], plot[:,2], c=color, s=cell_radius, label=label, marker=".", edgecolors=color)
+        ax.scatter(plot[:,0], plot[:,1], plot[:,2], c=color, s=args.cell_diameter / 2, label=label, marker=".", edgecolors=color)
 
     axis_list = [pca.components_.T, ica.mixing_]
     colors = ['orange', 'red']
