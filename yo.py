@@ -171,6 +171,10 @@ def get_args():
             help = "Type of histogram",
             choices = ["step", "bar"],
             default = "bar")
+    parser.add_argument("--select_ca1",
+            help = "Only analyze cells in ca1",
+            type = bool,
+            default = "True")
     return parser.parse_args()
 
 
@@ -191,10 +195,20 @@ if __name__ == "__main__":
     for target, reference in zip(targets, references):
         target_info = load_txt(target)
         reference_info = load_txt(reference)
-        
-        target_objects,_ = get_track_objects(target_info, mask = args.mask)
-        reference_objects,_ = get_track_objects(reference_info, mask = args.mask)
 
+        colocal_array = get_colocal_arrays(reference_info, [target_info])
+        
+        reference_objects,colocal_mask = get_track_objects(reference_info, colocal_info_array = colocal_array)
+        if args.select_ca1:
+            from get_ca1 import select_ca1
+            is_ca1 = select_ca1(reference_objects)
+        else:
+            is_ca1 = (np.ones(reference_objects.shape[0]) == 1)
+
+        print(colocal_mask.shape, is_ca1.shape)
+        target_objects = reference_objects[colocal_mask[:,0] & is_ca1]
+        reference_objects = reference_objects[is_ca1]
+            
 
         print("Loaded {} cells from target file: {}.".format(target_objects.shape[0], target))
         print("Loaded {} cells from reference file: {}.".format(reference_objects.shape[0], reference))

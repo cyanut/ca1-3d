@@ -16,12 +16,6 @@ def select_ca1(res, n=20, threshold=60):
         is_ca1.append(dist_array[n-1] < threshold)
     return np.array(is_ca1)
 
-def _res_2_coord(res_dic, pixel_size):
-    pixel_size = np.array(pixel_size)
-    coords = np.array(list(zip(res_dic["Location_Center_X"], res_dic["Location_Center_Y"], res_dic["ImageNumber"]))).T
-    coords *= pixel_size[:, None]
-    return coords
-
 
 def get_args():
     parser = argparse.ArgumentParser(\
