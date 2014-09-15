@@ -54,7 +54,6 @@ def get_colocal_arrays(reference, target_list, tol=1.0, pixel_size=(0.332, 0.332
     pixel_size = np.array(pixel_size)[np.newaxis, :]
     ref = np.array(get_cell_info_raw(reference))[:,1:]
     target_list = [np.array(get_cell_info_raw(x))[:, 1:] for x in target_list]
-    print("---", [np.shape(x) for x in target_list])
     ref *= pixel_size
     target_list = [x * pixel_size for x in target_list]
     res = (np.zeros((ref.shape[0], len(target_list))) != 0)

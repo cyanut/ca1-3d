@@ -6,7 +6,7 @@ from sklearn.decomposition import PCA, FastICA
 import argparse
 
 
-cell_diameter = 100 #um 
+cell_diameter = 13 #um 
 cell_radius = cell_diameter / 2
 
 def select_ca1(res, n=20, threshold=60):
@@ -24,19 +24,6 @@ def _res_2_coord(res_dic, pixel_size):
     coords *= pixel_size[:, None]
     return coords
 
-'''       
-def get_colocal_arrays(reference, target_list, pixel_size=(0.332, 0.332, 1.0), tol=1.0):
-    Match target_list objects onto reference. 
-    return: a boolean numpy array of (N_reference_obj, n_target).
-    ref = _dic_2_coord(reference, pixel_size)
-    target_list = [_dic_2_coord(x, pixel_size) for x in target_list]
-    tol **= 2
-    res = (np.zeros((reference.shape[0], len(target_list))) != 0)
-    for i,coord in enumerate(reference):
-        for j,target in enumerate(target_list):
-            res[i,j] = (np.min(np.sum((target - coord) ** 2, axis=1)) < tol)
-    return res  
-'''
 
 def get_args():
     parser = argparse.ArgumentParser(\
@@ -44,7 +31,7 @@ def get_args():
             formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-t", "--target",
             help = "The two experimental cell groups to be analyzed, arc and h1a",
-            nargs = "2")
+            nargs = 2)
     parser.add_argument("-r", "--reference",
             help = "The reference cell groups to be sampled from")
     return parser.parse_args()
@@ -72,6 +59,11 @@ if __name__ == "__main__":
 
     is_ca1 = select_ca1(res)
 
+    print("DAPI in CA1:", np.sum(is_ca1))
+    print("Arc in CA1:", np.sum(label[:,0] & is_ca1))
+    print("H1a in CA1:", np.sum(label[:,1] & is_ca1))
+    print("Arc/H1a in CA1:", np.sum(label[:,0] & label[:,1] & is_ca1))
+    print("DAPI outside CA1:", np.sum(~is_ca1))
     
     plot_data.append(res[~label[:,0] & ~label[:,1] & is_ca1])
     plot_data.append(res[label[:,0] & ~label[:,1] & is_ca1])
@@ -93,7 +85,7 @@ if __name__ == "__main__":
     for color, axis in zip(colors, axis_list):
         axis /= np.sqrt(np.sum(axis ** 2, axis=0))
         #axis *= res.std()
-        print(axis)
+        print("Axis:", axis)
         x,y,z = axis
         l = 200
         pca_axis = ax.quiver(source_list[0] + l*x, source_list[1] + l*y, source_list[2]+l*z,x,y,z, color=color, length = l, arrow_length_ratio=0.1)
