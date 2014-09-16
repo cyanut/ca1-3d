@@ -47,7 +47,8 @@ if __name__ == "__main__":
     S_ica /= S_ica.std(axis=0)
 
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    #ax = fig.add_subplot(111, projection='3d')
+    ax = Axes3D(fig)
 
     cell_colors = ['blue', 'green', 'red', 'yellow', 'brown']
     cell_labels = ["DAPI", "Arc", "H1a", "Arc+H1a", 'non-CA1']
@@ -84,7 +85,7 @@ if __name__ == "__main__":
         print("Axis:", axis)
         x,y,z = axis
         l = 200
-        pca_axis = ax.quiver(source_list[0] + l*x, source_list[1] + l*y, source_list[2]+l*z,x,y,z, color=color, length = l)
+        pca_axis = ax.quiver(source_list[0] + l*x, source_list[1] + l*y, source_list[2]+l*z,x,y,z, color=color, length = l, arrow_length_ratio=0.1)
     plt.show()
 
 
