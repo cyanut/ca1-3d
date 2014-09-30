@@ -84,6 +84,7 @@ class InteractiveFig(object):
 
 
 def select_ca1(res, n=20, threshold=60):
+    #return np.zeros(res.shape[0]) == 0
     is_ca1 = []
     threshold **= 2
     for p in res:
@@ -145,7 +146,6 @@ def plot_3d(res, label, ca1_label):
 def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bound=None):
 
     r = diameter / 2.0
-    res = res[ca1_label]
     if bound is None:
         bounding_min = np.min(res, axis=0)
         bounding_max = np.max(res, axis=0)
