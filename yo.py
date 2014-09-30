@@ -227,14 +227,14 @@ if __name__ == "__main__":
                     repeat = repeat
                     )
 
-        pooled_target_dist = np.hstack(target_dist)
-        pooled_reference_dist = np.hstack(reference_dist)
+        pooled_target_dist = np.hstack((pooled_target_dist, target_dist))
+        pooled_reference_dist = np.hstack((pooled_target_dist, reference_dist))
 
 
     print("plotting reference distribution:", pooled_reference_dist.shape)
-    plt.hist(reference_dist, bins=args.reference_bins, histtype=args.hist_type, cumulative=args.cumulative,normed=True)
+    plt.hist(pooled_reference_dist, bins=args.reference_bins, histtype=args.hist_type, cumulative=args.cumulative,normed=True, alpha=0.5)
     print("plotting target distribution:", pooled_target_dist.shape)
-    plt.hist(target_dist, bins=bins, histtype=args.hist_type, normed=True, cumulative=args.cumulative)
+    plt.hist(pooled_target_dist, bins=bins, histtype=args.hist_type, normed=True, cumulative=args.cumulative, alpha=0.5)
 
     print("Kolmogorov-Smirnof test: target against reference (two tailed)")
     D, p = ks_2samp(pooled_target_dist, pooled_reference_dist)

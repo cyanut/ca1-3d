@@ -7,6 +7,29 @@ import numpy as np
 from sklearn.decomposition import PCA, FastICA
 import argparse
 from scipy import stats
+from matplotlib.colors import LinearSegmentedColormap
+
+
+class LinearColormap(LinearSegmentedColormap):
+
+    def __init__(self, name, segmented_data, index=None, **kwargs):
+        if index is None:
+            # If index not given, RGB colors are evenly-spaced in colormap.
+            index = np.linspace(0, 1, len(segmented_data['red']))
+        for key, value in segmented_data.items():
+            # Combine color index with color values.
+            segmented_data[key] = zip(index, value)
+        segmented_data = dict((key, [(x, y, y) for x, y in value])
+                              for key, value in segmented_data.items())
+        LinearSegmentedColormap.__init__(self, name, segmented_data, **kwargs)
+
+
+# Red for all values, but alpha changes linearly from 0.3 to 1
+color_spec = {'blue':  [1.0, 0.0],
+           'green': [0.0, 0.0],
+           'red':   [0.0, 1.0],
+           'alpha': [0.05, 1.0]}
+alpha_red = LinearColormap('alpha_red', color_spec)
 
 class InteractiveFig(object):
 
@@ -94,7 +117,7 @@ def select_ca1(res, n=20, threshold=60):
     return np.array(is_ca1)
 
 
-def plot_3d(res, label, ca1_label):
+def plot_3d(res, label, ca1_label, cell_colors, cell_labels):
     pca = PCA()
     X = res
     S_pca = pca.fit(X).transform(X)
@@ -106,21 +129,8 @@ def plot_3d(res, label, ca1_label):
     #ax = fig.add_subplot(111, projection='3d')
     ax = Axes3D(fig)
 
-    cell_colors = ['blue', 'green', 'red', 'yellow', 'brown']
-    cell_labels = ["DAPI", "Arc", "H1a", "Arc+H1a", 'non-CA1']
     plot_data = []
 
-    print("DAPI in CA1:", np.sum(ca1_label))
-    print("Arc in CA1:", np.sum(label[:,0] & ca1_label))
-    print("H1a in CA1:", np.sum(label[:,1] & ca1_label))
-    print("Arc/H1a in CA1:", np.sum(label[:,0] & label[:,1] & ca1_label))
-    print("DAPI outside CA1:", np.sum(~ca1_label))
-    
-    plot_data.append(res[~label[:,0] & ~label[:,1] & ca1_label])
-    plot_data.append(res[label[:,0] & ~label[:,1] & ca1_label])
-    plot_data.append(res[~label[:,0] & label[:,1] & ca1_label])
-    plot_data.append(res[label[:,0] & label[:,1] & ca1_label])
-    plot_data.append(res[~ca1_label])
 
     for plot, color, label in zip(plot_data, cell_colors, cell_labels):
         ax.scatter(plot[:,0], plot[:,1], plot[:,2], c=color, s=args.cell_diameter / 2, label=label, marker=".", edgecolors=color)
@@ -143,17 +153,24 @@ def plot_3d(res, label, ca1_label):
     plt.show()
 
 
+def get_bound(res):
+    bounding_min = np.min(res, axis=0)
+    bounding_max = np.max(res, axis=0)
+    '''
+    bounding_min -= r
+    bounding_max += r
+    bounding_min[bounding_min < 0] = 0
+    '''
+    bound = np.vstack((bounding_min, bounding_max))
+    return bound
+
 def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bound=None):
 
     r = diameter / 2.0
     if bound is None:
-        bounding_min = np.min(res, axis=0)
-        bounding_max = np.max(res, axis=0)
-        bounding_min -= r
-        bounding_max += r
-        bounding_min[bounding_min < 0] = 0
-        bound = np.vstack((bounding_min, bounding_max))
+        bound = get_bound(res)
 
+    bounding_min, bounding_max = bound
     zs = np.arange(bounding_min[2], bounding_max[2], resolution[2])
     xy_pixels = bound / resolution    
 
@@ -211,9 +228,49 @@ if __name__ == "__main__":
     args = get_args()
     res, label = get_cells(args.reference, args.target)
     ca1_label = select_ca1(res)
-    print(label, ca1_label)
+
+    print(res.shape)
+
+    plot_data = []
+
+    cell_colors = ['blue', 'green', 'red', 'yellow', 'brown']
+    cell_labels = ["DAPI", "Arc", "H1a", "Arc+H1a", 'non-CA1']
+    print("DAPI in CA1:", np.sum(ca1_label))
+    print("Arc in CA1:", np.sum(label[:,0] & ca1_label))
+    print("H1a in CA1:", np.sum(label[:,1] & ca1_label))
+    print("Arc/H1a in CA1:", np.sum(label[:,0] & label[:,1] & ca1_label))
+    print("DAPI outside CA1:", np.sum(~ca1_label))
+    
+    plot_data.append(res[~label[:,0] & ~label[:,1] & ca1_label])
+    plot_data.append(res[label[:,0] & ~label[:,1] & ca1_label])
+    plot_data.append(res[~label[:,0] & label[:,1] & ca1_label])
+    plot_data.append(res[label[:,0] & label[:,1] & ca1_label])
+    plot_data.append(res[~ca1_label])
+
+    res_ca1 = res[ca1_label]
+    '''
+    kde_dapi = stats.gaussian_kde(res_ca1.T)
+    #kde_arc = stats.gaussian_kde((res_ca1[label[:,0]]).T)
+    #kde_h1a = stats.gaussian_kde((res_ca1[label[:,1]]).T)
+    mesh_resolution = 30
+    bound = get_bound(res)
+    print(bound.shape, bound)
+    x = np.linspace(bound[0,0], bound[1,0], mesh_resolution)
+    y = np.linspace(bound[0,1], bound[1,1], mesh_resolution)
+    z = np.linspace(bound[0,2], bound[1,2], mesh_resolution)
+    mesh = np.meshgrid(x,y,z)
+    print([x.shape for x in mesh])
+    cx = np.vstack((mesh[0].ravel(), mesh[1].ravel(), mesh[2].ravel()))
+    clist = kde_dapi(cx)
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.scatter(mesh[0].ravel(), mesh[1].ravel(), mesh[2].ravel(), s=15, c=clist, marker=".", edgecolor="none", cmap=alpha_red)
+    plt.show()
+    quit()
+    '''
+
     if args.plot_3d:
-        plot_3d(res, label, ca1_label)
+        plot_3d(res, label, ca1_label, cell_colors, cell_labels)
     if args.plot_2d:
         def get_color(arr):
             if not arr[0]:
