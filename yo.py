@@ -136,6 +136,13 @@ def get_distance_distro(tracked_objects, sample_size=None, repeat=1):
     return dist
 
 
+def get_cells(reference, targets):
+    ref_txt = load_txt(reference)
+    target_txt_list = [load_txt(x) for x in targets]
+    colocal = get_colocal_arrays(ref_txt, target_txt_list)
+    res, label = get_track_objects(ref_txt, colocal_info_array = colocal)
+    return res, label
+
 
 def get_args():
     '''
