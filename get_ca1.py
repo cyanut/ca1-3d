@@ -131,6 +131,11 @@ def plot_3d(res, label, ca1_label, cell_colors, cell_labels):
 
     plot_data = []
 
+    plot_data.append(res[~label[:,0] & ~label[:,1] & ca1_label])
+    plot_data.append(res[label[:,0] & ~label[:,1] & ca1_label])
+    plot_data.append(res[~label[:,0] & label[:,1] & ca1_label])
+    plot_data.append(res[label[:,0] & label[:,1] & ca1_label])
+    plot_data.append(res[~ca1_label])
 
     for plot, color, label in zip(plot_data, cell_colors, cell_labels):
         ax.scatter(plot[:,0], plot[:,1], plot[:,2], c=color, s=args.cell_diameter / 2, label=label, marker=".", edgecolors=color)
@@ -149,7 +154,7 @@ def plot_3d(res, label, ca1_label, cell_colors, cell_labels):
         print("Axis:", axis)
         x,y,z = axis
         l = 200
-        #pca_axis = ax.quiver(source_list[0] + l*x, source_list[1] + l*y, source_list[2]+l*z,x,y,z, color=color, length = l, arrow_length_ratio=0.1)
+        pca_axis = ax.quiver(source_list[0] + l*x, source_list[1] + l*y, source_list[2]+l*z,x,y,z, color=color, length = l, arrow_length_ratio=0.1)
     plt.show()
 
 
@@ -241,11 +246,6 @@ if __name__ == "__main__":
     print("Arc/H1a in CA1:", np.sum(label[:,0] & label[:,1] & ca1_label))
     print("DAPI outside CA1:", np.sum(~ca1_label))
     
-    plot_data.append(res[~label[:,0] & ~label[:,1] & ca1_label])
-    plot_data.append(res[label[:,0] & ~label[:,1] & ca1_label])
-    plot_data.append(res[~label[:,0] & label[:,1] & ca1_label])
-    plot_data.append(res[label[:,0] & label[:,1] & ca1_label])
-    plot_data.append(res[~ca1_label])
 
     res_ca1 = res[ca1_label]
     '''
