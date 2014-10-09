@@ -217,7 +217,7 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
     im_axes = plt.axes([0.025, 0.11, 0.80, 0.90])
     ind_axes = plt.axes([0.05, 0.05, 0.85, 0.03])
     indplot = ind_axes.plot(np.arange(len(zs)), np.zeros(len(zs)))
-    cellplot = im_axes.scatter(cell_coords[0][0], cell_coords[0][1], c=cell_coords[0][2], s=r)
+    cellplot = im_axes.scatter(cell_coords[0][0], cell_coords[0][1], c=cell_coords[0][2], s=4*r*r)#here pi=4 :P
 
     def click_handler(plot, event):
         seq = [np.array([True, False, False]),
@@ -334,7 +334,7 @@ if __name__ == "__main__":
         plot_3d(res, label, ca1_label, cell_colors, cell_labels)
     if args.plot_2d:
             
-        plot_2d(res, label, ca1_label, diameter=150, resolution=np.array([0.73,0.73,1]), get_color=get_color)
+        plot_2d(res, label, ca1_label, diameter=15, resolution=np.array([0.73,0.73,1]), get_color=get_color)
     
     if args.output:
         with open(args.output, 'wb') as outf:
