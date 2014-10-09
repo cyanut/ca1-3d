@@ -8,6 +8,8 @@ from sklearn.decomposition import PCA, FastICA
 import argparse
 from scipy import stats
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.backend_bases import KeyEvent, MouseEvent
+import pickle
 
 
 class LinearColormap(LinearSegmentedColormap):
@@ -90,7 +92,6 @@ class InteractiveFig(object):
 
     def on_input(self, event):
         if isinstance(event, KeyEvent):
-            print(self.index, self.control_range)
             if event.key == "left" and self.index > self.control_range[0]:
                 self.index -= 1
                 self.update_plot()
@@ -151,7 +152,6 @@ def plot_3d(res, label, ca1_label, cell_colors, cell_labels):
     for color, axis in zip(colors, axis_list):
         axis /= np.sqrt(np.sum(axis ** 2, axis=0))
         #axis *= res.std()
-        print("Axis:", axis)
         x,y,z = axis
         l = 200
         pca_axis = ax.quiver(source_list[0] + l*x, source_list[1] + l*y, source_list[2]+l*z,x,y,z, color=color, length = l, arrow_length_ratio=0.1)
@@ -169,8 +169,20 @@ def get_bound(res):
     bound = np.vstack((bounding_min, bounding_max))
     return bound
 
-def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bound=None):
+def get_color(arr):
+    if not arr[0]:
+        return (0.647, 0.167, 0.167, 1)
+    else:
+        if arr[1] and not arr[2]:
+            return (1, 0, 0, 1)
+        elif arr[1] and arr[2]:
+            return (1, 1, 0, 1)
+        elif not arr[1] and arr[2]:
+            return (0, 1, 0, 1)
+        elif not arr[1] and not arr[2]:
+            return (0, 0, 1, 1)
 
+def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bound=None):
     r = diameter / 2.0
     if bound is None:
         bound = get_bound(res)
@@ -181,16 +193,22 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
 
     cell_coords = []
 
-    if kde:
-        kde_coords = []
-    for z in zs:
+    cell_z_index = {}
+    z_cell_index= []
+    for j, z in enumerate(zs):
         xys = []
         z_min = z - r
         z_max = z + r
+        cell_index = []
         for i, coord in enumerate(res):
             if z_min <= coord[2] <= z_max:
+                if not i in cell_z_index:
+                    cell_z_index[i] = []
+                cell_z_index[i].append(j)
+                cell_index.append(i)
                 color = np.hstack((ca1_label[i], label[i]))
                 xys.append([coord, color])
+        z_cell_index.append(cell_index)
         cell_coords.append([[x[0][0] for x in xys], [x[0][1] for x in xys], [get_color(x[1]) for x in xys]])
         if kde:
             pass
@@ -200,7 +218,57 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
     ind_axes = plt.axes([0.05, 0.05, 0.85, 0.03])
     indplot = ind_axes.plot(np.arange(len(zs)), np.zeros(len(zs)))
     cellplot = im_axes.scatter(cell_coords[0][0], cell_coords[0][1], c=cell_coords[0][2], s=r)
-    interactive_fig = InteractiveFig(fig, control_axes=[ind_axes], plots=[cellplot], data = [cell_coords])
+
+    def click_handler(plot, event):
+        seq = [np.array([True, False, False]),
+               np.array([True, True, False]),
+               np.array([True, False, True]),
+               np.array([True, True, True]),
+               np.array([False, False, False])]
+
+        if isinstance(event, MouseEvent) and event.inaxes is im_axes:
+            x = event.xdata
+            y = event.ydata
+            z = zs[plot.index]
+            
+            cell_id = None
+            min_dist = 99999999999
+            for i, coord in enumerate(res):
+                if z - r <= coord[2] <= z + r:
+                    dist = (x - coord[0]) ** 2 + (y - coord[1]) ** 2
+                    if dist < min_dist:
+                        cell_id = i
+                        min_dist = dist
+            if cell_id:
+                label_arr = np.hstack((ca1_label[cell_id], label[cell_id]))
+                i = 0
+                while not np.all(label_arr == seq[i]):
+                    i += 1
+                if event.button == 1:
+                    i += 1
+                else:
+                    i -= 1
+                i = i % len(seq)
+                label[cell_id] = seq[i][1:]
+                ca1_label[cell_id] = seq[i][0]
+                #TODO
+                #update plot data for all affected z
+                #find affected z-stack
+                affected_z = cell_z_index[cell_id]
+                new_color = get_color(seq[i])
+                for z in affected_z:
+                    z = int(z)
+                    #find cell in z
+                    cell_num = z_cell_index[z].index(cell_id)
+                    #update plot data
+                    cell_coords[z][2][cell_num] = new_color
+
+                #update plot
+                cellplot.set_facecolor(cell_coords[plot.index][2])
+                fig.canvas.draw()
+                
+
+    interactive_fig = InteractiveFig(fig, control_axes=[ind_axes], plots=[cellplot], data = [cell_coords], event_handler=click_handler)
 
     plt.show()
     plt.close()
@@ -211,6 +279,11 @@ def get_args():
     parser = argparse.ArgumentParser(\
             description = "Analysis file for Yosuke's CellProfiler result",
             formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("data",
+            help = "Load data file (pickled)",
+            nargs = "?")
+    parser.add_argument("-o", "--output",
+            help = "Output dump")
     parser.add_argument("-t", "--target",
             help = "The two experimental cell groups to be analyzed, arc and h1a",
             nargs = 2)
@@ -231,58 +304,59 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    res, label = get_cells(args.reference, args.target)
-    ca1_label = select_ca1(res)
+    if args.data:
+        with open(args.data,"rb") as fdata:
+            data = pickle.load(fdata)
+        res = data["res"]
+        label = data["label"]
+        ca1_label = data["ca1_label"]
+    else:
+        res, label = get_cells(args.reference, args.target)
+        ca1_label = select_ca1(res)
+        
 
-    print(res.shape)
 
     plot_data = []
 
     cell_colors = ['blue', 'green', 'red', 'yellow', 'brown']
     cell_labels = ["DAPI", "Arc", "H1a", "Arc+H1a", 'non-CA1']
+    
+
+    res_ca1 = res[ca1_label]
+    
+    print("DAPI in CA1:", np.sum(ca1_label))
+    print("Arc in CA1:", np.sum(label[:,0] & ca1_label))
+    print("H1a in CA1:", np.sum(label[:,1] & ca1_label))
+    print("Arc/H1a in CA1:", np.sum(label[:,0] & label[:,1] & ca1_label))
+    print("DAPI outside CA1:", np.sum(~ca1_label))
+
+    if args.plot_3d:
+        plot_3d(res, label, ca1_label, cell_colors, cell_labels)
+    if args.plot_2d:
+            
+        plot_2d(res, label, ca1_label, diameter=150, resolution=np.array([0.73,0.73,1]), get_color=get_color)
+    
+    if args.output:
+        with open(args.output, 'wb') as outf:
+            pickle.dump({"res":res, "label":label, "ca1_label":ca1_label}, outf)
+            
     print("DAPI in CA1:", np.sum(ca1_label))
     print("Arc in CA1:", np.sum(label[:,0] & ca1_label))
     print("H1a in CA1:", np.sum(label[:,1] & ca1_label))
     print("Arc/H1a in CA1:", np.sum(label[:,0] & label[:,1] & ca1_label))
     print("DAPI outside CA1:", np.sum(~ca1_label))
     
-
-    res_ca1 = res[ca1_label]
-    '''
+    
     kde_dapi = stats.gaussian_kde(res_ca1.T)
-    #kde_arc = stats.gaussian_kde((res_ca1[label[:,0]]).T)
-    #kde_h1a = stats.gaussian_kde((res_ca1[label[:,1]]).T)
-    mesh_resolution = 30
-    bound = get_bound(res)
-    print(bound.shape, bound)
-    x = np.linspace(bound[0,0], bound[1,0], mesh_resolution)
-    y = np.linspace(bound[0,1], bound[1,1], mesh_resolution)
-    z = np.linspace(bound[0,2], bound[1,2], mesh_resolution)
-    mesh = np.meshgrid(x,y,z)
-    print([x.shape for x in mesh])
-    cx = np.vstack((mesh[0].ravel(), mesh[1].ravel(), mesh[2].ravel()))
-    clist = kde_dapi(cx)
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.scatter(mesh[0].ravel(), mesh[1].ravel(), mesh[2].ravel(), s=15, c=clist, marker=".", edgecolor="none", cmap=alpha_red)
-    plt.show()
-    quit()
-    '''
-
-    if args.plot_3d:
-        plot_3d(res, label, ca1_label, cell_colors, cell_labels)
-    if args.plot_2d:
-        def get_color(arr):
-            if not arr[0]:
-                return "brown"
-            else:
-                if arr[1] and not arr[2]:
-                    return "red"
-                elif arr[1] and arr[2]:
-                    return "yellow"
-                elif not arr[1] and arr[2]:
-                    return "green"
-                elif not arr[1] and not arr[2]:
-                    return "blue"
-            
-        plot_2d(res, label, ca1_label, diameter=150, resolution=np.array([0.73,0.73,1]), get_color=get_color)
+    kde_arc = stats.gaussian_kde((res[label[:,0] & ca1_label]).T)
+    kde_h1a = stats.gaussian_kde((res[label[:,1] & ca1_label]).T)
+    cells = res[ca1_label]
+    dapi_val = kde_dapi(cells.T)
+    arc_val = kde_arc(cells.T)
+    h1a_val = kde_h1a(cells.T)
+    kld_da = stats.entropy(dapi_val, arc_val)
+    kld_dh = stats.entropy(dapi_val, h1a_val)
+    kld_ah = stats.entropy(arc_val, h1a_val)
+    print("KL divergence between DAPI KDE and arc KDE:", kld_da)
+    print("KL divergence between DAPI KDE and h1a KDE:", kld_dh)
+    print("KL divergence between arc KDE and h1a KDE:", kld_ah)
