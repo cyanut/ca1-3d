@@ -174,11 +174,11 @@ def get_color(arr):
         return (0.647, 0.167, 0.167, 1)
     else:
         if arr[1] and not arr[2]:
-            return (1, 0, 0, 1)
+            return (0, 1, 0, 1)
         elif arr[1] and arr[2]:
             return (1, 1, 0, 1)
         elif not arr[1] and arr[2]:
-            return (0, 1, 0, 1)
+            return (1, 0, 0, 1)
         elif not arr[1] and not arr[2]:
             return (0, 0, 1, 1)
 
@@ -218,6 +218,8 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
     ind_axes = plt.axes([0.05, 0.05, 0.85, 0.03])
     indplot = ind_axes.plot(np.arange(len(zs)), np.zeros(len(zs)))
     cellplot = im_axes.scatter(cell_coords[0][0], cell_coords[0][1], c=cell_coords[0][2], s=4*r*r)#here pi=4 :P
+    im_axes.set_ylim(bound[:,1] + np.array([-r, r])) 
+    im_axes.set_xlim(bound[:,0] + np.array([-r, r])) 
 
     def click_handler(plot, event):
         seq = [np.array([True, False, False]),
@@ -345,6 +347,7 @@ if __name__ == "__main__":
     print("H1a in CA1:", np.sum(label[:,1] & ca1_label))
     print("Arc/H1a in CA1:", np.sum(label[:,0] & label[:,1] & ca1_label))
     print("DAPI outside CA1:", np.sum(~ca1_label))
+    print("------------------")
     
     
     kde_dapi = stats.gaussian_kde(res_ca1.T)
