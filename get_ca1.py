@@ -241,10 +241,16 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
                     if dist < min_dist:
                         cell_id = i
                         min_dist = dist
+            if min_dist > diameter:
+                return
             if cell_id:
                 label_arr = np.hstack((ca1_label[cell_id], label[cell_id]))
                 i = 0
-                while not np.all(label_arr == seq[i]):
+                flag = False
+                while not flag:
+                    flag = np.all(label_arr == seq[i])
+                    if i == 4:
+                        flag = np.all(label_arr[0] == seq[i][0])
                     i += 1
                 if event.button == 1:
                     i += 1
