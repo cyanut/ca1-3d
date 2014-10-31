@@ -229,9 +229,11 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
     im_axes = plt.axes([0.025, 0.11, 0.80, 0.90])
     ind_axes = plt.axes([0.05, 0.05, 0.85, 0.03])
     indplot = ind_axes.plot(np.arange(len(zs)), np.zeros(len(zs)))
-    cellplot = im_axes.scatter(cell_coords[0][0], cell_coords[0][1], c=cell_coords[0][2], s=4*r*r)#here pi=4 :P
+    cellplot = im_axes.scatter(cell_coords[0][0], cell_coords[0][1], c=cell_coords[0][2], s=4*r*r)#s is area :P
     im_axes.set_ylim(bound[:,1] + np.array([-r, r])) 
     im_axes.set_xlim(bound[:,0] + np.array([-r, r])) 
+    im_axes.invert_yaxis()
+    
 
     def click_handler(plot, event):
         seq = [np.array([True, False, False]),
