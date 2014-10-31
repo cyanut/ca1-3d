@@ -34,6 +34,7 @@ color_spec = {'blue':  [1.0, 0.0],
 alpha_red = LinearColormap('alpha_red', color_spec)
 
 class InteractiveFig(object):
+    '''Class for interactive figure.'''
 
     def __init__(self, fig, control_axes= [], plots = [], data = [], init_index=0, color="red", idx_text_offset = (5, 5), control_range = None, listening_events = ["button_press_event", "key_press_event"], event_handler=None, update_handler=None):
         assert len(plots) == len(data), "InteractiveFig: axes should match data"
@@ -108,6 +109,12 @@ class InteractiveFig(object):
 
 
 def select_ca1(res, n=20, threshold=60):
+    '''Use a distance based method to crop out CA1 in the image. Cells more than `n' neighbours within distance `threshold' is selected.
+    n: minimum number of close neighbours 
+    threshold: distance to close neighbours, in um
+    return: binary array of size (n ,1), where True = in CA1
+    '''
+
     #return np.zeros(res.shape[0]) == 0
     is_ca1 = []
     threshold **= 2
@@ -159,6 +166,7 @@ def plot_3d(res, label, ca1_label, cell_colors, cell_labels):
 
 
 def get_bound(res):
+    '''Get bounding box of all cells.'''
     bounding_min = np.min(res, axis=0)
     bounding_max = np.max(res, axis=0)
     '''
@@ -174,12 +182,16 @@ def get_color(arr):
         return (0.647, 0.167, 0.167, 1)
     else:
         if arr[1] and not arr[2]:
+            #color for arc+ h1a- cells
             return (0, 1, 0, 1)
         elif arr[1] and arr[2]:
+            #arc+ h1a+ cells
             return (1, 1, 0, 1)
         elif not arr[1] and arr[2]:
+            #arc- h1a+ 
             return (1, 0, 0, 1)
         elif not arr[1] and not arr[2]:
+            #DAPI, arc- h1a-
             return (0, 0, 1, 1)
 
 def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bound=None):
@@ -259,7 +271,6 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
                 i = i % len(seq)
                 label[cell_id] = seq[i][1:]
                 ca1_label[cell_id] = seq[i][0]
-                #TODO
                 #update plot data for all affected z
                 #find affected z-stack
                 affected_z = cell_z_index[cell_id]
@@ -285,7 +296,7 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
 
 def get_args():
     parser = argparse.ArgumentParser(\
-            description = "Analysis file for Yosuke's CellProfiler result",
+            description = "Analysis file for CellProfiler result of ca1 clarity catFISH",
             formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("data",
             help = "Load data file (pickled)",
