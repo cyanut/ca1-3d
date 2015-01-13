@@ -130,6 +130,7 @@ def get_distance_distro(tracked_objects, sample_size=None, repeat=1):
         np.random.shuffle(ind_array)
         selected_objects = tracked_objects[ind_array[:sample_size],:]
         dist.append(pdist(selected_objects))
+        print(dist[-1].shape)
 
     dist = np.hstack(dist)
 
@@ -184,6 +185,25 @@ def get_args():
             default = "True")
     return parser.parse_args()
 
+def show_distance_distro(target_dist, reference_dist, args):
+    target_dist_distribution = get_distance_distro(target_dist)
+    print(target_dist.shape)
+    reference_dist_distribution = get_distance_distro(\
+                reference_dist,
+                sample_size = target_dist.shape[0],
+                repeat = args.repeat
+                )
+
+    print("plotting reference distribution:", reference_dist.shape)
+    plt.hist(reference_dist_distribution, bins=args.reference_bins, histtype=args.hist_type, cumulative=args.cumulative,normed=True, alpha=0.5)
+    print("plotting target distribution:", target_dist.shape)
+    plt.hist(target_dist_distribution, bins=args.bins, histtype=args.hist_type, normed=True, cumulative=args.cumulative, alpha=0.5)
+
+    print("Kolmogorov-Smirnof test: target against reference (two tailed)")
+    D, p = ks_2samp(target_dist_distribution, reference_dist_distribution)
+    print("D = {}, p = {}".format(D, p))
+
+    plt.show()
 
 if __name__ == "__main__":
     import argparse

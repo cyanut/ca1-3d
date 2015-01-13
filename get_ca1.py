@@ -1,4 +1,4 @@
-from yo import get_cells
+from yo import get_cells, show_distance_distro
 import matplotlib.pyplot as plt
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 import matplotlib
@@ -294,6 +294,16 @@ def plot_2d(res, label, ca1_label, diameter, resolution, get_color, kde=None, bo
     plt.show()
     plt.close()
 
+def show_dist_distribution(res, label, ca1_label, args):
+
+    
+    arc_dist = res[label[:,0] & ca1_label]
+    h1a_dist = res[label[:,1] & ca1_label]
+    dapi = res[ca1_label]
+    print("arc / dapi distance distribution")
+    show_distance_distro(arc_dist, dapi, args)
+    print("h1a / dapi distance distribution")
+    show_distance_distro(h1a_dist, dapi, args)
 
 
 def get_args():
@@ -320,6 +330,27 @@ def get_args():
     parser.add_argument("-2", "--plot-2d",
             help = "plot the data in 2d stacks",
             action = "store_true")
+    parser.add_argument("-b", "--bins",
+            help = "Number of bins to be used in the histogram",
+            type = int,
+            default = 50)
+    parser.add_argument("-rb", "--reference-bins",
+            help = "Number of bins to be used in the histogram of refernece distribution",
+            type = int,
+            default = 50)
+    parser.add_argument("-n", "--repeat",
+            help = "Number of random samples to be drawn from reference cell groups",
+            type = int,
+            default = 100)
+    parser.add_argument("-c", "--cumulative",
+            help = "plot cumulative histogram",
+            action="store_true")
+    parser.add_argument("--hist-type",
+            help = "Type of histogram",
+            choices = ["step", "bar"],
+            default = "bar") 
+
+    
     return parser.parse_args()
 
 
@@ -382,3 +413,5 @@ if __name__ == "__main__":
     print("KL divergence between DAPI KDE and arc KDE:", kld_da)
     print("KL divergence between DAPI KDE and h1a KDE:", kld_dh)
     print("KL divergence between arc KDE and h1a KDE:", kld_ah)
+
+    show_dist_distribution(res, label, ca1_label, args)
