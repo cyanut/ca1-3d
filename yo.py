@@ -130,7 +130,6 @@ def get_distance_distro(tracked_objects, sample_size=None, repeat=1):
         np.random.shuffle(ind_array)
         selected_objects = tracked_objects[ind_array[:sample_size],:]
         dist.append(pdist(selected_objects))
-        print(dist[-1].shape)
 
     dist = np.hstack(dist)
 
@@ -187,7 +186,6 @@ def get_args():
 
 def show_distance_distro(target_dist, reference_dist, args):
     target_dist_distribution = get_distance_distro(target_dist)
-    print(target_dist.shape)
     reference_dist_distribution = get_distance_distro(\
                 reference_dist,
                 sample_size = target_dist.shape[0],

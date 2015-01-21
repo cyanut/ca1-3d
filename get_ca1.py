@@ -161,7 +161,7 @@ def plot_3d(res, label, ca1_label, cell_colors, cell_labels):
         #axis *= res.std()
         x,y,z = axis
         l = 200
-        pca_axis = ax.quiver(source_list[0] + l*x, source_list[1] + l*y, source_list[2]+l*z,x,y,z, color=color, length = l, arrow_length_ratio=0.1)
+        #pca_axis = ax.quiver(source_list[0] + l*x, source_list[1] + l*y, source_list[2]+l*z,x,y,z, color=color, length = l, arrow_length_ratio=0.1)
     plt.show()
 
 
