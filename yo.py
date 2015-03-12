@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import random
 import argparse
 from scipy.stats import ks_2samp
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, squareform
 
 
 def load_txt(fname):
@@ -112,7 +112,7 @@ def get_track_objects(res_dic, mask=None, pixel_size=(0.332, 0.332, 1.0), coloca
 
     return np.array(cell_info_avg), np.array(colocal_info_list) 
 
-def get_distance_distro(tracked_objects, sample_size=None, repeat=1):
+def get_distance_distro(tracked_objects, sample_size=None, repeat=1, neighbours=-1):
     '''
     Given an 2d array of coordinates, random sample from it calculate pair-wise distances.
     tracked_objects: input 2d array. Each row is a coordinate.
@@ -129,7 +129,13 @@ def get_distance_distro(tracked_objects, sample_size=None, repeat=1):
     for i in range(repeat):
         np.random.shuffle(ind_array)
         selected_objects = tracked_objects[ind_array[:sample_size],:]
-        dist.append(pdist(selected_objects))
+        if neighbours < 0:
+            dist.append(pdist(selected_objects))
+        else:
+            dist_all = squareform(pdist(selected_objects))
+            dist_all.partition(neighbours)
+            dist_all = dist_all[:,:neighbours+1]
+            dist.append(dist_all[dist_all > 0])
 
     dist = np.hstack(dist)
 
