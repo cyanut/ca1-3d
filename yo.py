@@ -112,13 +112,14 @@ def get_track_objects(res_dic, mask=None, pixel_size=(0.332, 0.332, 1.0), coloca
 
     return np.array(cell_info_avg), np.array(colocal_info_list) 
 
-def get_distance_distro(tracked_objects, sample_size=None, repeat=1, neighbours=-1):
+def get_distance_distro(tracked_objects, sample_size=None, repeat=1, neighbours=0):
     '''
     Given an 2d array of coordinates, random sample from it calculate pair-wise distances.
     tracked_objects: input 2d array. Each row is a coordinate.
     sample_size: the size of random sample to be withdrawn, and if is None,
                  calculate pair-wise distance of the whole input.
     repeat: number of random samples to be drawn.
+    neighbours: number of nearest neighbours to include in the analysis
     return: a 1d array of distances, pooled from all samples.
     '''
 
@@ -129,7 +130,7 @@ def get_distance_distro(tracked_objects, sample_size=None, repeat=1, neighbours=
     for i in range(repeat):
         np.random.shuffle(ind_array)
         selected_objects = tracked_objects[ind_array[:sample_size],:]
-        if neighbours < 0:
+        if neighbours <= 0:
             dist.append(pdist(selected_objects))
         else:
             dist_all = squareform(pdist(selected_objects))
@@ -173,6 +174,10 @@ def get_args():
             help = "Number of bins to be used in the histogram of refernece distribution",
             type = int,
             default = 50)
+    parser.add_argument("-nb", "--neighbours",
+            help = "Number of nearest neighbours to include, a number smaller or equal to 0 means all cells",
+            type = int,
+            default = 0)
     parser.add_argument("-n", "--repeat",
             help = "Number of random samples to be drawn from reference cell groups",
             type = int,
@@ -191,11 +196,12 @@ def get_args():
     return parser.parse_args()
 
 def show_distance_distro(target_dist, reference_dist, args):
-    target_dist_distribution = get_distance_distro(target_dist)
+    target_dist_distribution = get_distance_distro(target_dist, args.neighbours)
     reference_dist_distribution = get_distance_distro(\
                 reference_dist,
                 sample_size = target_dist.shape[0],
-                repeat = args.repeat
+                repeat = args.repeat,
+                neighbours = args.neighbours
                 )
 
     print("plotting reference distribution:", reference_dist.shape)
@@ -236,7 +242,6 @@ if __name__ == "__main__":
         else:
             is_ca1 = (np.ones(reference_objects.shape[0]) == 1)
 
-        print(colocal_mask.shape, is_ca1.shape)
         target_objects = reference_objects[colocal_mask[:,0] & is_ca1]
         reference_objects = reference_objects[is_ca1]
             
@@ -244,11 +249,12 @@ if __name__ == "__main__":
         print("Loaded {} cells from target file: {}.".format(target_objects.shape[0], target))
         print("Loaded {} cells from reference file: {}.".format(reference_objects.shape[0], reference))
     
-        target_dist = get_distance_distro(target_objects)
+        target_dist = get_distance_distro(target_objects, neighbours=args.neighbours)
         reference_dist = get_distance_distro(\
                     reference_objects,
                     sample_size = target_objects.shape[0],
-                    repeat = repeat
+                    repeat = repeat,
+                    neighbours = args.neighbours
                     )
 
         pooled_target_dist = np.hstack((pooled_target_dist, target_dist))

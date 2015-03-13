@@ -23,6 +23,10 @@ def get_args():
             help = "Number of random samples to be drawn from reference cell groups",
             type = int,
             default = 100)
+    parser.add_argument("-nb", "--neighbours",
+            help = "Number of nearest neighbours to include in the analysis, 0 means all cells",
+            type = int,
+            default =0)
     parser.add_argument("-c", "--cumulative",
             help = "plot cumulative histogram",
             action="store_true")
@@ -59,9 +63,9 @@ if __name__ == "__main__":
         ref = d["res"][d["ca1_label"]]
         for g in range(group_num):
             target = d["res"][d["label"][:,g] & d["ca1_label"]]
-            target_dist = get_distance_distro(target)
+            target_dist = get_distance_distro(target, neighbours =args.neighbours)
             ref_dist = get_distance_distro(ref, sample_size=target.shape[0],
-                    repeat = args.repeat)
+                    repeat = args.repeat, neighbours = args.neighbours)
             pooled_dist[g].append([target_dist, ref_dist])
 
         
